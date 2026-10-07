@@ -1,0 +1,38 @@
+name: Release
+# Única origem dos pacotes publicados: compilados aqui, a partir da tag,
+# com atestado de proveniência verificável por `gh attestation verify`.
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify vendored OTCv8 against upstream
+        run: bash tools/verify-third-party.sh
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libluajit-5.1-dev libphysfs-dev libzip-dev libssl-dev libboost-system-dev libboost-filesystem-dev zlib1g-dev libbz2-dev
+      - name: Build and package
+        env:
+          UH_BUILD_JOBS: '2'
+        run: bash tools/build-release.sh
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: out/*.tar.gz
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/*.tar.gz out/*.sha256 \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Compilado pelo GitHub Actions a partir do commit $GITHUB_SHA. Verifique com: gh attestation verify ultimate-headless-linux-x86_64.tar.gz --repo $GITHUB_REPOSITORY"

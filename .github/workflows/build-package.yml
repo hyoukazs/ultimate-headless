@@ -1,5 +1,8 @@
 name: Build Linux package
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,6 +12,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Verify vendored OTCv8 against upstream
+        run: bash tools/verify-third-party.sh
+      - name: Inspect login context
+        run: python3 -I tools/inspect-login-context.py
       - name: Install build dependencies
         run: |
           sudo apt-get update

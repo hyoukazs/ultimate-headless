@@ -4,11 +4,15 @@ Cliente de terminal para NTO Ultimate: login, seleção de personagem, treino Lu
 
 **O código e o pacote incluem os recursos necessários. Não é preciso obter ou copiar arquivos de contexto/metadados separadamente.** Conta e senha são digitadas ao executar e nunca são distribuídas ou gravadas em profiles.
 
-Ambiente validado: **Ubuntu 24.04 x86-64**. O pacote pronto funciona em VM de 1 GB sem compilação. O repositório permanece privado: use uma conta GitHub com acesso para baixar ou clonar.
+Ambiente validado: **Ubuntu 24.04 x86-64**. O pacote pronto funciona em VM de 1 GB sem compilação.
+
+## Segurança da conta
+
+Conta e senha são digitadas ao executar, enviadas somente ao servidor oficial do NTO Ultimate e nunca gravadas em disco. Não há telemetria nem envio para o autor. Limitações (senha em memória durante a execução, criptografia fraca do protocolo do jogo, usuário Linux e CPU enviados ao servidor) e instruções de auditoria estão em [SECURITY.md](SECURITY.md). Use uma senha exclusiva para o jogo.
 
 ## Opção 1: baixar, enviar, extrair e executar
 
-Baixe `ultimate-headless-linux-x86_64.tar.gz` na [release v1.0](https://github.com/hyoukazs/ultimate-headless/releases/tag/v1.0).
+Baixe `ultimate-headless-linux-x86_64.tar.gz` na [release mais recente](https://github.com/hyoukazs/ultimate-headless/releases/latest). Os pacotes são gerados somente pelo GitHub Actions; veja como verificar em [SECURITY.md](SECURITY.md).
 
 Envie para sua VM. Exemplo genérico, executado no diretório do download; substitua usuário e IP pelos seus valores:
 
