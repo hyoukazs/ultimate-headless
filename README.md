@@ -62,6 +62,13 @@ Repita `./run.sh`, autentique e selecione outro personagem. O profile é criado 
 cd ~/ultimate-headless
 grep -H '^character=' run/*.profile
 ps -eo pid,ppid,stat,rss,args | grep '[u]ltimate-headless --login'
+
+ou
+
+cd ~/ultimate-headless
+for p in run/*.profile; do
+  printf '%-8s %s\n' "$(cat "${p%.profile}.pid" 2>/dev/null)" "$(sed -n 's/^character=//p' "$p")"
+done
 ```
 
 Cada sessão tem supervisor e worker. Para ler um log, substitua `IDENTIDADE` pelo valor mostrado em `PROFILE_READY`:
