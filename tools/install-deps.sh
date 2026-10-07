@@ -2,7 +2,7 @@
 set -euo pipefail
 case "${1:-runtime}" in
   runtime) packages=(libluajit-5.1-2 libphysfs1 libzip4t64) ;;
-  build) packages=(build-essential cmake pkg-config libluajit-5.1-dev libphysfs-dev libzip-dev libssl-dev libboost-system-dev libboost-filesystem-dev zlib1g-dev libbz2-dev) ;;
+  build) packages=(build-essential cmake pkg-config libluajit-5.1-dev libphysfs-dev libzip-dev libssl-dev libboost-system-dev libboost-filesystem-dev zlib1g-dev libbz2-dev libglew-dev) ;;
   *) echo 'Expected runtime or build' >&2; exit 2 ;;
 esac
 if command -v dpkg-query >/dev/null && dpkg-query -W -f='${Status}\n' "${packages[@]}" 2>/dev/null |

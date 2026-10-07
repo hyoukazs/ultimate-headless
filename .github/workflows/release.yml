@@ -20,7 +20,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake pkg-config libluajit-5.1-dev libphysfs-dev libzip-dev libssl-dev libboost-system-dev libboost-filesystem-dev zlib1g-dev libbz2-dev
+          sudo apt-get install -y build-essential cmake pkg-config libluajit-5.1-dev libphysfs-dev libzip-dev libssl-dev libboost-system-dev libboost-filesystem-dev zlib1g-dev libbz2-dev libglew-dev
       - name: Build and package
         env:
           UH_BUILD_JOBS: '2'
