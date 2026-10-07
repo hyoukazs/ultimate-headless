@@ -84,11 +84,12 @@ struct LoginConfig {
     bool localPlatformContext=false;
     std::string pidFile,logFile,profileDir;
     uint16 port=0;
-    uint16 clientId=21; // Game::getOs() in the pinned upstream: Linux = 21.
+    uint16 clientId=21;
     uint32 dat=0, spr=0, pic=0x56C5DDE7;
     std::vector<uint8> context;
     std::shared_ptr<GameMetadata> metadata;
     std::string trainingModules;
+    std::string trainingBuff;
     ~LoginConfig() {
         if (!context.empty()) OPENSSL_cleanse(context.data(),context.size());
     }
@@ -258,7 +259,7 @@ struct CharacterEndpoint {
 class GameLoginSession final : public Protocol {
 public:
     GameLoginSession(const LoginConfig& config, Credentials& credentials, CharacterEndpoint endpoint)
-        : config(config),credentials(credentials),endpoint(std::move(endpoint)) {
+        : config(config),credentials(credentials),endpoint(std::move(endpoint)),trainingBuff(config.trainingBuff) {
         if(config.metadata){state.metadata=*config.metadata;loginPending=state.feature(35);newSpeedLaw=state.feature(36);clientPing=state.feature(24);}
     }
     GameState state;
@@ -267,7 +268,7 @@ public:
     std::chrono::steady_clock::time_point onlineSince{};
     unsigned frames=0, unparsedFrames=0, pingReplies=0;
     unsigned retryAfter=0;
-    unsigned trainingRequests=0,powerdownRequests=0,attackRequests=0;
+    unsigned trainingRequests=0,powerdownRequests=0,attackRequests=0,buffRequests=0;
     bool trainingStarted=false,trainingAcknowledged=false,trainingStopped=false;
     std::chrono::steady_clock::time_point lastFrame{};
     void start() { connect(endpoint.host,endpoint.port); }
@@ -285,6 +286,7 @@ private:
     LoginConfig config;
     Credentials& credentials;
     CharacterEndpoint endpoint;
+    std::string trainingBuff;
     bool challenged=false, first=true, loginPending=false, newSpeedLaw=false, clientPing=false;
     std::array<bool,256> reportedOpcodes{};
     unsigned currentOpcode=0;
@@ -325,10 +327,12 @@ private:
         });
         g_lua.registerGlobalFunction("uh_say",[this](LuaInterface* lua){
             auto text=lua->popString();if(done || !online || !state.ready() || !isConnected())return 0;
-            if(text!="!treinar" && text!="powerdown" && text!="Kai"){done=true;result=5;return 0;}
+            const bool configuredBuff=!trainingBuff.empty() && text==trainingBuff;
+            if(text!="!treinar" && text!="powerdown" && text!="Kai" && !configuredBuff){done=true;result=5;return 0;}
             OutputMessagePtr m(new OutputMessage);m->addU8(150);m->addU8(1);m->addString(text);send(m);
             if(text=="!treinar"){if(!trainingRequests++)std::cout << "TRAINING_COMMAND !treinar" << std::endl;}
             if(text=="powerdown"){if(!powerdownRequests++)std::cout << "TRAINING_COMMAND powerdown" << std::endl;}
+            if(configuredBuff){if(!buffRequests++)std::cout << "TRAINING_COMMAND buff" << std::endl;}
             return 0;
         });
         g_lua.registerGlobalFunction("uh_attack",[this](LuaInterface* lua){
@@ -353,6 +357,12 @@ private:
             if(done || !online || !isConnected() || (!state.attackId && !state.followId))return 0;
             OutputMessagePtr m(new OutputMessage);m->addU8(190);send(m);state.attackId=state.followId=0;return 0;
         });
+        // Publish the configured training buff to the Lua module before it loads.
+        if(!trainingBuff.empty()) {
+            g_lua.pushString(trainingBuff);
+            g_lua.setGlobal("TRAINING_BUFF");
+            std::cout << "TRAINING_BUFF name=" << trainingBuff << std::endl;
+        }
         const auto load=[this](const char* name,const char* global){
             std::ifstream input(std::filesystem::path(config.trainingModules)/name,std::ios::binary);std::ostringstream content;content<<input.rdbuf();
             if(!input || content.str().empty() || content.str().size()>65536)throw std::runtime_error("invalid trusted training module");
@@ -686,6 +696,49 @@ int runLoginProbe(int argc, char** argv) {
             std::cerr << "live training requires an exact character" << std::endl;
             result=2;
         }
+        // Post-selection: training modules may declare a per-character training buff
+        // (e.g. Byakugan Tenken). Choice and name are read while the TTY is still attached,
+        // before the daemon fork; the name travels through config into every worker.
+        if(result==0 && !config.trainingModules.empty()) {
+            const auto trim=[](std::string& value) {
+                const auto blank=[](char c){return c==' '||c=='\t'||c=='\r';};
+                while(!value.empty() && blank(value.back()))value.pop_back();
+                size_t begin=0;
+                while(begin<value.size() && blank(value[begin]))++begin;
+                if(begin)value.erase(0,begin);
+            };
+            std::cout << "Este personagem tem buff de treino? 1 - Sim, 2 - Nao: " << std::flush;
+            std::string input;
+            std::getline(std::cin,input);
+            if(std::cin.eof()) {
+                std::cout << std::endl;
+                result=130;
+            } else {
+                trim(input);
+                if(input=="1") {
+                    std::cout << "Digite o nome do buff de treino (ex: Byakugan Tenken): " << std::flush;
+                    std::getline(std::cin,config.trainingBuff);
+                    if(std::cin.eof()) {
+                        std::cout << std::endl;
+                        result=130;
+                    } else {
+                        trim(config.trainingBuff);
+                        bool control=false;
+                        for(char c:config.trainingBuff)if(static_cast<unsigned char>(c)<32){control=true;break;}
+                        if(config.trainingBuff.empty()) {
+                            std::cout << "buff de treino nao pode ser vazio" << std::endl;
+                            result=2;
+                        } else if(config.trainingBuff.size()>64 || control) {
+                            std::cout << "buff de treino invalido" << std::endl;
+                            result=2;
+                        }
+                    }
+                } else if(input!="2") {
+                    std::cout << "opcao invalida: digite 1 ou 2" << std::endl;
+                    result=2;
+                }
+            }
+        }
     }
     if(result==0 && config.daemon) {
         try {
@@ -802,7 +855,7 @@ int runLoginProbe(int argc, char** argv) {
                         << " states=" << game->state.statesKnown << " compatible=" << game->state.compatible << " mana=" << game->state.mana << "/" << game->state.maxMana
                         << " creatures=" << game->state.creatures.size() << std::endl;
                     if(game->trainingStarted)std::cout << "TRAINING_HEALTH active=1 requests=" << game->trainingRequests << " acknowledged=" << game->trainingAcknowledged
-                        << " powerdown=" << game->powerdownRequests << " attacks=" << game->attackRequests << " target_updates=" << game->state.targetHealthUpdates << " in_pz=" << ((game->state.states&16384)!=0) << std::endl;
+                        << " powerdown=" << game->powerdownRequests << " attacks=" << game->attackRequests << " buff=" << game->buffRequests << " target_updates=" << game->state.targetHealthUpdates << " in_pz=" << ((game->state.states&16384)!=0) << std::endl;
                 }
                 auto wait=g_dispatcher.nextWaitMs();if(wait<0 || wait>1000)wait=1000;
                 g_ioService.reset();g_ioService.run_one_for(std::chrono::milliseconds(wait));

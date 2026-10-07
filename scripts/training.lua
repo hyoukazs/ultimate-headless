@@ -3,7 +3,7 @@
 local M = {}
 function M.start(api, runtime)
   for _, name in ipairs({'online','name','say','manaPercent','inPz','attacking',
-                         'position','spectators','attack','onTalk','playerId','attackId','followId','follow','cancel'}) do
+                          'position','spectators','attack','onTalk','playerId','attackId','followId','follow','cancel'}) do
     assert(type(api[name]) == 'function', 'missing live API: '..name)
   end
   local self = { treinando = false, alive = true }
@@ -32,6 +32,16 @@ function M.start(api, runtime)
       api.say('powerdown')
     end
   end)
+  -- Training buff macro (e.g., Byakugan Tenken). TRAINING_BUFF is set by C++ before this
+  -- module loads. Says the buff every 3 s while online, as requested by the user.
+  local trainingBuff = TRAINING_BUFF
+  if type(trainingBuff) == 'string' and trainingBuff ~= '' then
+    self.trainingBuff = runtime:macro(3000, function()
+      if online() then
+        api.say(trainingBuff)
+      end
+    end)
+  end
   self.target = runtime:macro(200, function()
     if not online() or type(api.inPz())~='boolean' then return end
     local pos = api.position()
@@ -71,10 +81,10 @@ function M.start(api, runtime)
     if not self.alive then return end
     self.alive = false
     unsubscribe()
-    for _, m in ipairs({self.AntiPush,self.cancelTraining,self.chakra,self.target}) do m:disable() end
+    for _, m in ipairs({self.AntiPush,self.cancelTraining,self.chakra,self.target,self.trainingBuff}) do m:disable() end
     self.treinando = false
   end
-  for _, m in ipairs({self.AntiPush,self.cancelTraining,self.chakra,self.target}) do m:enable() end
+  for _, m in ipairs({self.AntiPush,self.cancelTraining,self.chakra,self.target,self.trainingBuff}) do m:enable() end
   return self
 end
 return M
