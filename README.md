@@ -4,7 +4,7 @@ Cliente de terminal para NTO Ultimate: login, seleção de personagem, treino Lu
 
 **O código e o pacote incluem os recursos necessários. Não é preciso obter ou copiar arquivos de contexto/metadados separadamente.** Conta e senha são digitadas ao executar e nunca são distribuídas ou gravadas em profiles.
 
-Ambiente validado: **Ubuntu 24.04 x86-64**. O pacote pronto funciona em VM de 1 GB sem compilação. O repositório permanece privado: use uma conta GitHub com acesso para baixar ou clonar.
+Ambiente validado: **Ubuntu 24.04 x86-64**. O pacote pronto funciona em VM de 1 GB sem compilação. Use uma conta GitHub com acesso para baixar ou clonar.
 
 ## Opção 1: baixar, enviar, extrair e executar
 
