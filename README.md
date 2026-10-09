@@ -90,8 +90,8 @@ Encerrar uma sessão não encerra as outras. Matar somente o worker provoca reco
 
 - `!treinar`: a cada 100 ms até receber `on!` do próprio personagem. Os macros começam ativos; a lógica Lua prevê `Kai` se esse macro for desativado.
 - `powerdown`: a cada 100 ms quando chakra/MP está acima de 45%.
-- Trainer: reavalia a cada 200 ms; escolhe o Trainer mais próximo, no mesmo andar, até 7 tiles pela distância Chebyshev; desempate por ID. Em PZ segue, fora de PZ ataca. Evita comandos repetidos sem mudança de alvo/modo.
-- Ignora Trainers com outro jogador a até 1 tile; é uma heurística, alguém passando pode fazer um Trainer parecer ocupado. Sem candidato, cancela suas ações. Follow pode mover o personagem; não há busca de caminho própria.
+- Trainer: reavalia a cada 200 ms; escolhe o Trainer mais próximo, no mesmo andar, até 7 tiles pela distância Chebyshev; desempate por ID. Em PZ segue; fora de PZ aproxima (follow) do mais próximo quando está além do alcance corpo a corpo e ataca ao chegar perto. Evita comandos repetidos sem mudança de alvo/modo.
+- Trainers são compartilhados: outro jogador ao lado só exclui o candidato quando você não está ao lado dele (cabines individuais). Sem candidato, cancela suas ações. Follow pode mover o personagem; não há busca de caminho própria.
 - Buff de treino (opcional): ao responder `1` na pergunta pós-seleção e digitar o nome da skill (ex.: `Byakugan Tenken`), um macro adicional usa o buff via `say` a cada 3 segundos enquanto o personagem estiver online. O nome é aparado e precisa ter 1–64 caracteres sem caracteres de controle. Responder `2` mantém o fluxo normal.
 
 Após queda de conexão, server save, timeout ou crash do worker, o supervisor reconecta o mesmo personagem e recria os macros. O backoff começa em 5 s e chega a 60 s; respeita a espera informada pelo servidor. Credenciais inválidas, personagem ausente, protocolo incompatível ou erro Lua encerram as tentativas. Uma mensagem de manutenção desconhecida pode exigir ajuste.

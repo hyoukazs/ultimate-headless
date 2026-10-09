@@ -346,7 +346,7 @@ private:
         });
         g_lua.registerGlobalFunction("uh_follow",[this](LuaInterface* lua){
             const double raw=lua->popNumber();
-            if(!std::isfinite(raw) || raw<1 || raw>0xffffffffULL || raw!=std::floor(raw) || done || !online || !state.ready() || !isConnected() || !(state.states&16384))return 0;
+            if(!std::isfinite(raw) || raw<1 || raw>0xffffffffULL || raw!=std::floor(raw) || done || !online || !state.ready() || !isConnected())return 0;
             const auto id=static_cast<uint32>(raw);const auto it=state.creatures.find(id);if(it==state.creatures.end())return 0;
             const auto& c=it->second;auto name=c.name;std::transform(name.begin(),name.end(),name.begin(),[](unsigned char v){return std::tolower(v);});
             if(!c.visible || !c.monster || name!="trainer" || c.pos.z!=state.position.z || std::max(std::abs(state.position.x-c.pos.x),std::abs(state.position.y-c.pos.y))>7 || state.followId==id)return 0;
@@ -853,7 +853,7 @@ int runLoginProbe(int argc, char** argv) {
                     nextReport=now+std::chrono::seconds(30);
                     if(config.metadata)std::cout << "GAME_STATE map=" << game->state.mapKnown << " stats=" << game->state.statsKnown
                         << " states=" << game->state.statesKnown << " compatible=" << game->state.compatible << " mana=" << game->state.mana << "/" << game->state.maxMana
-                        << " creatures=" << game->state.creatures.size() << std::endl;
+                        << " creatures=" << game->state.creatures.size() << " clamps=" << game->state.stackClamps << std::endl;
                     if(game->trainingStarted)std::cout << "TRAINING_HEALTH active=1 requests=" << game->trainingRequests << " acknowledged=" << game->trainingAcknowledged
                         << " powerdown=" << game->powerdownRequests << " attacks=" << game->attackRequests << " buff=" << game->buffRequests << " target_updates=" << game->state.targetHealthUpdates << " in_pz=" << ((game->state.states&16384)!=0) << std::endl;
                 }
@@ -867,7 +867,7 @@ int runLoginProbe(int argc, char** argv) {
             game->logout();
             auto flushUntil=std::chrono::steady_clock::now()+std::chrono::milliseconds(250);
             while(std::chrono::steady_clock::now()<flushUntil) {g_ioService.reset();g_ioService.run_one_for(std::chrono::milliseconds(20));Connection::poll();g_dispatcher.poll();}
-            std::cout << "GAME_SESSION_END frames=" << game->frames << " unparsed_frames=" << game->unparsedFrames << " ping_replies=" << game->pingReplies << " missing_mapped_things=" << game->state.missingMappedThings << std::endl;
+            std::cout << "GAME_SESSION_END frames=" << game->frames << " unparsed_frames=" << game->unparsedFrames << " ping_replies=" << game->pingReplies << " missing_mapped_things=" << game->state.missingMappedThings << " stack_clamps=" << game->state.stackClamps << std::endl;
         } catch(const std::exception&) {std::cout << "game protocol failure" << std::endl;game->stopTraining();result=5;}
         game->disconnect();
     }

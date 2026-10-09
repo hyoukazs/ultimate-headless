@@ -48,7 +48,10 @@ function M.start(api, runtime)
     if not pos then return end
     local best, bestDistance
     local spectators=api.spectators() or {}
+    -- Booth trainers are exclusive while open-area trainers are shared: another
+    -- player next to a trainer only excludes it while I am not next to it myself.
     local function occupied(creature)
+      if distance(pos, creature.position) <= 1 then return false end
       for _, other in pairs(spectators) do
         if other.player==true and other.id~=api.playerId()
           and sameFloor(other.position,creature.position)
@@ -70,6 +73,11 @@ function M.start(api, runtime)
     if not best then
       if attackId~=0 or followId~=0 then api.cancel() end
     elseif api.inPz() then
+      if attackId~=0 then api.cancel() end
+      if followId~=best.id or attackId~=0 then api.follow(best.id) end
+    elseif bestDistance > 1 then
+      -- Outside PZ and out of melee reach: walk to the nearest trainer first.
+      -- Attacking from afar deals no damage and the server does not chase.
       if attackId~=0 then api.cancel() end
       if followId~=best.id or attackId~=0 then api.follow(best.id) end
     else

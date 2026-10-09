@@ -3,6 +3,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <array>
+#include <iostream>
 #include <map>
 #include <vector>
 #include <functional>
@@ -60,6 +61,7 @@ public:
     uint32_t attackSequence=0;
     unsigned targetHealthUpdates=0;
     unsigned missingMappedThings=0;
+    unsigned stackClamps=0;
     GamePosition position;
     unsigned health=0,maxHealth=0,mana=0,maxMana=0;
     bool mapKnown=false,statsKnown=false,statesKnown=false,compatible=true;
@@ -81,7 +83,19 @@ public:
                 (opcode==102 || opcode==104)?1:width,(opcode==101 || opcode==103)?1:height);break;
         }
         case 105: {auto p=pos(msg);tile(msg,p);break;}
-        case 106: {auto p=pos(msg);int stack=feature(19)?msg->getU8():-1; auto t=thing(msg);add(p,t,stack);break;}
+        case 106: {auto p=pos(msg);int stack=feature(19)?msg->getU8():-1; auto t=thing(msg);
+            // The server may reference tile contents the client has not fully tracked
+            // (e.g. changes skipped as unmapped by opcodes 107-109, or tiles at the edge
+            // of the known area). An explicit stack beyond the known list is healed by
+            // priority-ordered insertion and counted, instead of ending the session.
+            const auto knownIt=tiles.find(p);
+            const size_t known=knownIt==tiles.end()?0:knownIt->second.size();
+            if(stack>=0 && stack!=255 && stack>static_cast<int>(known)) {
+                ++stackClamps;
+                if(stackClamps<=8)std::cout<<"GAME_STATE_STACK_CLAMPED x="<<p.x<<" y="<<p.y<<" z="<<p.z<<" stack="<<stack<<" known="<<known<<" creature="<<t.creature<<" item="<<t.item<<std::endl;
+                stack=-1;
+            }
+            add(p,t,stack);break;}
         case 107: {auto where=mapped(msg);auto t=thing(msg);if(!hasMapped(where)){++missingMappedThings;break;}auto old=tiles.at(where.first).at(where.second);remove(where.first,where.second,old.creature && old.creature==t.creature);add(where.first,t,where.second);break;}
         case 108: {auto where=mapped(msg);if(!hasMapped(where)){++missingMappedThings;break;}remove(where.first,where.second);break;}
         case 109: {auto where=mapped(msg);auto p=pos(msg);if(!hasMapped(where)){++missingMappedThings;break;}auto& list=tiles.at(where.first);auto t=list.at(where.second);if(!t.creature){++missingMappedThings;break;}remove(where.first,where.second,true);add(p,t,-1);break;}
